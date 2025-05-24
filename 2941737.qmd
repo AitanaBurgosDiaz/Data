@@ -1,0 +1,525 @@
+---
+title: "Causes of Death in the United Kingdom (2021)"
+author: ID 2941737
+format:
+  html:
+    theme: lumen
+    toc: true
+    toc-location: left
+    df-print: paged
+    embed-resources: true
+---
+
+**Summary**
+
+Understanding the leading causes of mortality is essential for guiding public health policy, allocating healthcare resources effectively, and assessing the impact of medical interventions. This project aims to answer the research question: *What are the top causes of death in the United Kingdom, and how do they differ by sex?* Specifically, it explores mortality patterns across males and females using official death statistics.
+
+This study is of personal and academic interest because it provides insight into public health priorities and highlights disparities in health outcomes between population groups. The COVID-19 pandemic has further underscored the importance of understanding mortality trends, making this analysis especially relevant. Examining sex-based differences in leading causes of death can help inform targeted health interventions, improve disease prevention strategies, and contribute to ongoing discussions in public health research.
+
+The dataset used in this project was obtained from the World Health Organization (WHO) webpage (https://data.who.int/countries/826), which compiles mortality statistics from national vital registration systems. The data, disaggregated by country, year, sex, age group, and cause of death, was selected for the year 2021 to provide the most recent and complete information for the United Kingdom, reflecting the ongoing impact of COVID-19. This publicly available dataset, follows international standards such as the International Classification of Diseases (ICD), ensuring accuracy and standardization.
+
+**Key steps in the analysis**
+
+The analysis was conducted entirely in R, with a strong focus on creating clear, compelling, and reproducible visualizations following the principles from Storytelling with Data by Cole Nussbaumer Knaflic. This book emphasizes selecting visuals that best match the story we want to tell, eliminating unnecessary clutter, and guiding the audience’s attention to the most important insights.
+
+The primary visual tool used was the bar chart, which served both as an introduction and as a precise means of comparing mortality causes. Bar charts were chosen because they allow for a clear and immediate understanding of rank and magnitude, making them ideal for guiding the audience through the key findings. At the start of the analysis, special emphasis was placed on highlighting the leading cause of death—Alzheimer’s disease and other dementias—which stood out as the main cause of mortality in 2021, even surpassing COVID-19, which ranked second. This deliberate choice to open with a strong, attention-grabbing message aligns with Knaflic’s recommendations to focus the audience’s attention and set the narrative tone.
+
+As the presentation progressed, the focus shifted to highlighting the top three causes of death, which were visualized using a card-style graphic format. These “cards” worked as visual summaries, helping to distill the main findings into an accessible and engaging format, and allowing the audience to grasp key messages at a glance. To examine differences by sex, separate datasets were used for females and males, drawn from the same WHO source and year. This approach allowed for the creation of targeted visualizations that clearly presented the top causes of death for each sex, before culminating in a comparative analysis. The comparative visualizations were designed to emphasize contrasts and similarities between the sexes, helping to reveal patterns that might not be visible when looking at each group separately.
+
+Data manipulation involved filtering by country and year, grouping by sex and cause, and summarisation. Throughout the visual design, I prioritized simplicity, clear labeling, and strategic use of color to maintain the audience’s focus and support the overall storytelling approach.
+
+# To ensure full reproducibility of this analysis, the following R packages must be installed and loaded
+
+```{r}
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+install.packages("here")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("plotly")
+install.packages("tibble")
+```
+
+# Required libraries
+
+```{r}
+library(here)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(tibble)
+```
+
+# Start of the analysis
+
+The mortality dataset used includes age-standardized death rates (per 100,000 population) for all age groups, all causes classified as rankable, and for both sexes combined, filtered for available countries and the year 2021.
+
+```{r}
+here("Data")
+Death <- read.csv("https://xmart-api-public.who.int/DEX_CMS/GHE_FULL_DD?$filter=FLAG_RANKABLE%20in%20(%271%27)%20and%20DIM_AGEGROUP_CODE%20in%20(%27ALLAges%27)%20and%20DIM_SEX_CODE%20in%20(%27BTSX%27)&$orderBy=DIM_COUNTRY_CODE&$select=DIM_COUNTRY_CODE,DIM_YEAR_CODE,DIM_GHECAUSE_TITLE,DIM_SEX_CODE,VAL_DTHS_RATE100K_NUMERIC&$format=csv")
+```
+
+# Check the data
+
+```{r}
+glimpse(Death) 
+```
+
+This code filters the full WHO mortality dataset to extract the top 10 leading causes of death in the United Kingdom in 2021, based on the age-standardized death rate per 100,000 population:
+
+```{r}
+Top10_uk <- Death %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_SEX_CODE == "BTSX", DIM_YEAR_CODE == 2021) %>%
+  arrange(desc(VAL_DTHS_RATE100K_NUMERIC)) %>%
+  select(DIM_GHECAUSE_TITLE, VAL_DTHS_RATE100K_NUMERIC) %>%
+  head(10) 
+```
+
+# Select the top 10 causes of death in the UK
+
+```{r}
+Top10_uk 
+```
+
+# Load WHO mortality dataset
+
+For simplicity and consistency with WHO reporting, this analysis uses standardized mortality rates (per 100,000 population) directly from the source dataset, without attempting to estimate absolute death counts.
+
+```{r}
+Death <- read.csv ("https://xmart-api-public.who.int/DEX_CMS/GHE_FULL_DD?$filter=FLAG_RANKABLE%20in%20(%271%27)%20and%20DIM_AGEGROUP_CODE%20in%20(%27ALLAges%27)%20and%20DIM_SEX_CODE%20in%20(%27BTSX%27)&$orderBy=DIM_COUNTRY_CODE&$select=DIM_COUNTRY_CODE,DIM_YEAR_CODE,DIM_GHECAUSE_TITLE,DIM_SEX_CODE,VAL_DTHS_RATE100K_NUMERIC&$format=csv")
+```
+
+# Filter
+
+```{r}
+uk_data <- Death %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021)
+```
+
+# Select the top 10 causes of death and their mortality rates
+
+```{r}
+top10_uk <- uk_data %>%
+  arrange(desc(VAL_DTHS_RATE100K_NUMERIC)) %>%
+  slice(1:10)
+```
+
+# Display
+
+```{r}
+top10_uk %>%
+  select(DIM_GHECAUSE_TITLE, VAL_DTHS_RATE100K_NUMERIC)
+```
+
+# Bar plot
+
+The use of horizontal bars supports easy reading of long cause-of-death labels, while the data is sorted in descending order to immediately highlight the most significant values. To focus the audience’s attention, the top-ranked cause (dementias) is visually distinguished in red, drawing the eye without overwhelming the rest of the chart.
+
+```{r}
+
+#Highlight the top cause to focus attention
+top_cause <- top10_uk$DIM_GHECAUSE_TITLE[1]
+
+ggplot(top10_uk, aes(x = reorder(DIM_GHECAUSE_TITLE, VAL_DTHS_RATE100K_NUMERIC),
+                     y = VAL_DTHS_RATE100K_NUMERIC,
+                     fill = DIM_GHECAUSE_TITLE == top_cause)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(values = c("TRUE" = "firebrick", "FALSE" = "grey70")) +
+  scale_y_continuous(limits = c(0, 150), expand = expansion(mult = c(0, 0.05))) +
+  labs(
+    title = "Dementia was the leading cause of death",
+    caption = "Death rates are per 100,000 population. Source: World Health Organization"
+  ) +
+  theme_minimal(base_size = 9) +
+  theme(
+    axis.title.x = element_blank(),  # Remove x-axis label
+    axis.title.y = element_blank(),  # Remove y-axis label
+    axis.text = element_text(size = 8),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.grid.major.y = element_blank(),  # Remove horizontal gridlines for clarity
+    panel.grid.major.x = element_line(color = "grey90")  # Subtle reference lines
+  )
+```
+
+# Top 3 graphic
+
+To present the top 3 causes of death, I used a clean card-style layout to prioritize clarity and comparability. This format highlights key values without visual clutter. I used ChatGPT for technical guidance—e.g., aligning text elements and refining layout with `geom_tile()`.
+
+```{r}
+
+# Reordering the top 3
+top3 <- Death %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021) %>%
+  filter(DIM_GHECAUSE_TITLE %in% c("Alzheimer disease and other dementias", "COVID-19", "Ischaemic heart disease")) %>%
+  mutate(
+    ShortName = case_when(
+      DIM_GHECAUSE_TITLE == "Alzheimer disease and other dementias" ~ "Dementia",
+      DIM_GHECAUSE_TITLE == "COVID-19" ~ "COVID-19",
+      DIM_GHECAUSE_TITLE == "Ischaemic heart disease" ~ "Heart disease"
+    ),
+    RankText = case_when(
+      ShortName == "Dementia" ~ "Highest rate",
+      ShortName == "COVID-19" ~ "2nd highest rate",
+      ShortName == "Heart disease" ~ "3rd highest rate"
+    ),
+    ShortName = factor(ShortName, levels = c("Dementia", "COVID-19", "Heart disease")),
+    Rate = round(VAL_DTHS_RATE100K_NUMERIC, 1)
+  )
+
+# Colors 
+bg_colors <- c("Dementia" = "#E3F2FD", "COVID-19" = "#FCE4EC", "Heart disease" = "#FFF8E1")
+
+# Plot
+ggplot(top3, aes(x = ShortName, y = 1, fill = ShortName)) +
+  geom_tile(width = 0.85, height = 0.85, color = NA) +  # card-like background
+  geom_text(aes(label = ShortName), vjust = -2.5, size = 6, fontface = "bold") +  # title
+  geom_text(aes(label = Rate), vjust = 0.5, size = 9, fontface = "bold", color = "black") +  # value
+  geom_text(aes(label = RankText), vjust = 3, size = 4, color = "gray30") +  # description
+  
+  scale_fill_manual(values = bg_colors) +
+  scale_x_discrete(position = "bottom") +
+  coord_fixed(ratio = 1.5) +
+  labs(
+    title = "Top 3 Causes of Death in the UK (2021)",
+    subtitle = "Deaths per 100,000 population",
+    x = NULL, y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 15),
+    plot.subtitle = element_text(hjust = 0.5, size = 11),
+    legend.position = "none"
+  )
+
+```
+
+# Top 5 bar chart
+
+Following the visual logic of the previous graphic, the next chart expands the view to the top five while maintaining the same color scheme for consistency. This continuation helps build a cohesive narrative while introducing new insights and specific numbers.
+
+```{r}
+# Filtering top 5 causes
+top5 <- Death %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021) %>%
+  arrange(desc(VAL_DTHS_RATE100K_NUMERIC)) %>%
+  slice(1:5) %>%
+  mutate(
+    DIM_GHECAUSE_TITLE = case_when(
+      DIM_GHECAUSE_TITLE == "Alzheimer disease and other dementias" ~ "Dementia",
+      DIM_GHECAUSE_TITLE == "Ischaemic heart disease" ~ "Heart disease",
+      TRUE ~ DIM_GHECAUSE_TITLE
+    ),
+    cause_order = factor(DIM_GHECAUSE_TITLE, levels = c(
+      "Dementia", "COVID-19", "Heart disease", "Stroke", "Lower respiratory infections"
+    )),
+    label = paste0(round(VAL_DTHS_RATE100K_NUMERIC, 1))
+  )
+
+# Consistent color palette
+color_palette <- c(
+  "Dementia" = "#1E88E5",
+  "COVID-19" = "#D81B60",
+  "Heart disease" = "#FFC107",
+  "Stroke" = "#BDBDBD",
+  "Lower respiratory infections" = "#999999"
+)
+
+# Bar chart
+ggplot(top5, aes(x = reorder(DIM_GHECAUSE_TITLE, VAL_DTHS_RATE100K_NUMERIC), 
+                 y = VAL_DTHS_RATE100K_NUMERIC, 
+                 fill = cause_order)) +
+  geom_col() +
+  coord_flip() +
+  geom_text(aes(label = label), hjust = -0.1, size = 4) +
+  scale_fill_manual(values = color_palette, guide = "none") +
+  labs(
+    title = "Top 5 Causes of Death",
+    y = "Deaths per 100,000 population",
+    x = NULL
+  ) +
+  ylim(0, 150) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.text = element_text(size = 10)
+  )
+```
+
+# Top causes of death (females)
+
+A dedicated dataset filtered by sex (DIM_SEX_CODE == ‘FMLE’) is employed to focus on the leading causes of death among females. This approach allows for a targeted analysis of gender-specific mortality patterns and draws attention to diseases that disproportionately affect women.
+
+```{r}
+Females <- read.csv("https://xmart-api-public.who.int/DEX_CMS/GHE_FULL_DD?$filter=FLAG_RANKABLE%20in%20(%271%27)%20and%20DIM_AGEGROUP_CODE%20in%20(%27ALLAges%27)%20and%20DIM_SEX_CODE%20in%20(%27FMLE%27)&$orderBy=DIM_COUNTRY_CODE&$select=DIM_COUNTRY_CODE,DIM_YEAR_CODE,DIM_GHECAUSE_TITLE,DIM_SEX_CODE,VAL_DTHS_RATE100K_NUMERIC&$format=csv")
+```
+
+# Check the data
+
+```{r}
+glimpse(Females) 
+```
+
+# Donut plot 1
+
+The donut plot was selected to clearly visualize proportional differences. Bright colors emphasize the leading causes of death, while less significant causes were shown in gray to avoid distracting from the main analysis. Basic interactivity allows users to click on segments to view specific death counts and causes.
+
+```{r}
+
+# Top 5 causes of death for women in the UK (2021)
+top5_female_causes <- Females %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021) %>%
+  arrange(desc(VAL_DTHS_RATE100K_NUMERIC)) %>%
+  slice(1:5) %>%
+  mutate(
+    DIM_GHECAUSE_TITLE = case_when(
+      DIM_GHECAUSE_TITLE == "Alzheimer disease and other dementias" ~ "Dementia",
+      DIM_GHECAUSE_TITLE == "Ischaemic heart disease" ~ "Heart disease",
+      TRUE ~ DIM_GHECAUSE_TITLE
+    ),
+    hovertext = case_when(
+      DIM_GHECAUSE_TITLE == "Dementia" ~ "Nearly 128 out of every 100,000 women in the UK<br>died from dementia in 2021.",
+      DIM_GHECAUSE_TITLE == "COVID-19" ~ "Approximately 103 out of every 100,000 women<br>died from COVID-19 in 2021.",
+      DIM_GHECAUSE_TITLE == "Heart disease" ~ "Around 104 per 100,000 women<br>died from heart disease in the UK in 2021.",
+      DIM_GHECAUSE_TITLE == "Stroke" ~ "Roughly 76 per 100,000 women<br>died from stroke in 2021.",
+      DIM_GHECAUSE_TITLE == "Lower respiratory infections" ~ "About 46 per 100,000 women<br>died from lower respiratory infections in 2021."
+    )
+  )
+
+# Color palette matching earlier graphics
+color_palette <- c(
+  "Dementia" = "#1E88E5",
+  "COVID-19" = "#D81B60",
+  "Heart disease" = "#FFC107",
+  "Stroke" = "#BDBDBD",
+  "Lower respiratory infections" = "#999999"
+)
+
+colors <- unname(color_palette[top5_female_causes$DIM_GHECAUSE_TITLE])
+
+# Create donut plot
+donut <- plot_ly(
+  top5_female_causes,
+  labels = ~DIM_GHECAUSE_TITLE,
+  values = ~VAL_DTHS_RATE100K_NUMERIC,
+  type = 'pie',
+  hole = 0.5,
+  text = ~hovertext,
+  hoverinfo = 'text',
+  textinfo = 'label+percent',
+  textposition = 'outside',
+  marker = list(colors = colors),
+  sort = FALSE
+)
+
+# Layout
+donut %>%
+  layout(
+    title = list(
+      text = "Top 5 Causes of Death in UK Women (2021)",
+      x = 0.5,
+      y = 0.95
+    ),
+    showlegend = FALSE,
+    margin = list(t = 80, b = 50)
+  )
+
+
+```
+
+Similarly, we analyze mortality data specific to males using the same methodology, filtering for records where DIM_SEX_CODE == "MLE". This subset reveals the most significant causes of death among men in the UK in 2021. By isolating male-specific data, we can identify patterns and risk factors that may differ substantially from those affecting women, informing gender-sensitive policy and healthcare planning.
+
+# Top causes of death (male)
+
+```{r}
+Male <- read.csv("https://xmart-api-public.who.int/DEX_CMS/GHE_FULL_DD?$filter=FLAG_RANKABLE%20in%20(%271%27)%20and%20DIM_AGEGROUP_CODE%20in%20(%27ALLAges%27)%20and%20DIM_SEX_CODE%20in%20(%27MLE%27)&$orderBy=DIM_COUNTRY_CODE&$select=DIM_COUNTRY_CODE,DIM_YEAR_CODE,DIM_GHECAUSE_TITLE,DIM_SEX_CODE,VAL_DTHS_RATE100K_NUMERIC&$format=csv")
+```
+
+# Check the data
+
+```{r}
+glimpse(Male) 
+```
+
+# Donut plot 2
+
+To ensure comparability, the male chart was designed to mirror the female version, with the same colors applied to shared causes of death. The male data required additional preprocessing, utilizing label mapping techniques to shorten lengthy cause names, such as “Trachea, bronchus, lung cancers,” thereby enhancing readability.
+
+```{r}
+
+# Names
+label_map <- tibble::tibble(
+  original = c(
+    "Alzheimer disease and other dementias",
+    "COVID-19",
+    "Ischaemic heart disease",
+    "Trachea, bronchus, lung cancers",
+    "Stroke",
+    "Chronic obstructive pulmonary disease",
+    "Lower respiratory infections"
+  ),
+  short_label = c(
+    "Dementia",
+    "COVID-19",
+    "Heart disease",
+    "Cancer",
+    "Stroke",
+    "Chronic lung disease",
+    "Respiratory infections"
+  ),
+  hovertext = c(
+    "Nearly 88 out of every 100,000 men in the UK<br>died from Alzheimer disease and other dementias in 2021.",
+    "Approximately 122 out of every 100,000 men<br>died from COVID-19 in 2021.",
+    "Around 163 per 100,000 men<br>died from ischaemic heart disease in 2021.",
+    "Nearly 70 per 100,000 men<br>died from Trachea, bronchus, lung cancers in 2021.",
+    "Roughly 93 per 100,000 men<br>died from stroke in 2021.",
+    "Roughly 52 per 100,000 men<br>died from chronic obstructive pulmonary disease in 2021.",
+    "About 46 per 100,000 men<br>died from lower respiratory infections in 2021."
+  )
+)
+
+# Filtering top 5
+top5_male_causes <- Male %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021, DIM_SEX_CODE == "MLE") %>%
+  arrange(desc(VAL_DTHS_RATE100K_NUMERIC)) %>%
+  slice(1:5) %>%
+  left_join(label_map, by = c("DIM_GHECAUSE_TITLE" = "original")) %>%
+  mutate(
+    label = ifelse(!is.na(short_label), short_label, DIM_GHECAUSE_TITLE),
+    hover = ifelse(!is.na(hovertext), hovertext, DIM_GHECAUSE_TITLE)
+  )
+
+# Colors
+color_palette <- c(
+  "Dementia" = "#1E88E5",
+  "COVID-19" = "#D81B60",
+  "Heart disease" = "#FFC107",
+  "Cancer" = "#999999",
+  "Stroke" = "#F4511E",
+  "Chronic lung disease" = "#BDBDBD",
+  "Respiratory infections" = "#3949AB"
+)
+
+colors <- unname(color_palette[top5_male_causes$label])
+
+# Donut plot
+donut_male <- plot_ly(
+  top5_male_causes,
+  labels = ~label,
+  values = ~VAL_DTHS_RATE100K_NUMERIC,
+  type = 'pie',
+  hole = 0.5,
+  text = ~hover,
+  hoverinfo = 'text',
+  textinfo = 'label+percent',
+  textposition = 'outside',
+  marker = list(colors = colors),
+  sort = FALSE
+)
+
+# Layout
+donut_male %>%
+  layout(
+    title = list(
+      text = "Top 5 Causes of Death in UK Men (2021)",
+      x = 0.5,
+      y = 0.95
+    ),
+    showlegend = FALSE,
+    margin = list(t = 80, b = 50)
+  )
+
+```
+
+# Combined chart
+
+To provide a comprehensive overview, comparative visualisations highlight differences in the leading causes of death between men and women. The use of pink and blue, traditional gender-associated colours, aids intuitive interpretation. This side-by-side analysis is essential for identifying disparities, prioritising interventions, and allocating health resources equitably.
+
+```{r}
+ 
+# Female data
+top_females <- Females %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021, DIM_SEX_CODE == "FMLE") %>%
+  arrange(desc(VAL_DTHS_RATE100K_NUMERIC)) %>%
+  slice(1:10) %>%
+  mutate(
+    deaths_per_100k = VAL_DTHS_RATE100K_NUMERIC,
+    sex = "Female"
+  )
+
+# Male data 
+top_males <- Male %>%
+  filter(DIM_COUNTRY_CODE == "GBR", DIM_YEAR_CODE == 2021, DIM_SEX_CODE == "MLE") %>%
+  filter(DIM_GHECAUSE_TITLE %in% top_females$DIM_GHECAUSE_TITLE) %>%
+  mutate(
+    deaths_per_100k = VAL_DTHS_RATE100K_NUMERIC,
+    sex = "Male"
+  )
+
+# Combining datasets
+combined <- bind_rows(top_females, top_males)
+
+# Ordering the causes of death from highest to lowest 
+combined <- combined %>%
+  group_by(DIM_GHECAUSE_TITLE) %>%
+  mutate(total_abs_deaths = sum(deaths_per_100k)) %>%
+  ungroup() %>%
+  mutate(
+    DIM_GHECAUSE_TITLE = factor(
+      DIM_GHECAUSE_TITLE,
+      levels = rev(unique(DIM_GHECAUSE_TITLE[order(total_abs_deaths)]))
+    ),
+    sex = factor(sex, levels = c("Male", "Female"))  
+  )
+
+# Scale
+max_val <- 100  
+
+# Graphic 
+plot_ly(
+  combined,
+  y = ~DIM_GHECAUSE_TITLE,
+  x = ~ifelse(sex == "Male", -deaths_per_100k, deaths_per_100k),
+  color = ~sex,
+  colors = c("Male" = "royalblue", "Female" = "deeppink"),
+  type = 'bar',
+  orientation = 'h',
+  text = ~paste0(sex, "<br>", DIM_GHECAUSE_TITLE, "<br>", round(deaths_per_100k, 1), " per 100k"),
+  hoverinfo = 'text',
+  textposition = 'none'
+) %>%
+  layout(
+    title = "Causes of Death by Gender",
+    barmode = 'relative',
+    xaxis = list(
+      title = "",
+      range = c(-max_val, max_val),
+      tickvals = seq(-100, 100, by = 25),
+      tickformat = ",d",
+      zeroline = TRUE,
+      showgrid = FALSE
+    ),
+    yaxis = list(
+      title = "",
+      tickfont = list(size = 10),
+      showgrid = FALSE
+    ),
+    margin = list(l = 150), 
+    automargin = TRUE,       
+    showlegend = FALSE,
+    bargap = 0.1
+  )
+
+```
+
+# Conclusion
+
+This project addressed the research question *What are the top causes of death in the United Kingdom, and how do they differ by sex?* by analyzing official mortality statistics. The findings reveal that dementia disproportionately affected women, with a 15% higher mortality rate compared to men, while men were 12% more likely to die from heart disease and 6% more affected by COVID-19. Notably, despite the impact of the pandemic, dementia emerged as the leading cause of death overall. These results underscore the importance of recognizing sex-specific mortality patterns to inform targeted public health interventions and policies.
+
+# References
+
+-   World Health Organization (2023). *Mortality Database*. Retrieved from https://data.who.int/countries/826\
+-   Knaflic, C. N. (2015). *Storytelling with Data: A Data Visualization Guide for Business Professionals*. Wiley.
